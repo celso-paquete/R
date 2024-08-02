@@ -1,0 +1,184 @@
+#PACOTE PARA LER DADOS DO SPSS
+install.packages("haven")
+library(haven)
+
+censo2014 <- read_sav("FDADOS_CENSO2014_AGREGADO.sav")
+
+
+#RESUMO DAS VARIAVEIS E DOS TIPOS DE DADOS
+library("dplyr")
+glimpse(censo2014)
+
+View(censo2014)
+
+#CONVERTER VARIAVEIS COM LABELS PARA APARECER O ROTULO
+censo2014_1<-haven::as_factor(censo2014) 
+
+
+
+#FUNÇÃO PARA MOSTRAR ROTULOS E LIDAR COM VALORES DIFERENTES DE 1
+mostra_rotulos_fc <- function(data) {
+  labels <- purrr::map_chr(data, function(x) {
+    label <- attr(x, "label")
+    if (length(label) != 1) {
+      return("Sem Rótulo") # ou qualquer valor padrão que você prefira
+    }
+    return(label)
+  })
+  names(data) <- labels
+  return(data)
+}
+
+
+#APLICAR A FUNÇÃO PARA MOSTRAR NOMES DAS VARIAVEIS
+censo2014_2<- mostra_rotulos_fc(censo2014_1)
+
+
+
+#EXCLUIR UMA COLUNA DO DATA SET
+install.packages("dplyr")
+library(dplyr)
+
+
+
+# VER A TABELA DE DADOS
+View (censo2014_2)
+
+# VER OS TIPO DE DADOS E AS CATEGORIAS DAS VARIAVEIS
+glimpse(censo2014_2)
+
+
+# VER O NOME DAS COLUNAS DA BASE DE DADOS
+colnames(censo2014_2) 
+
+
+#SELECIONAR COLUNAS (VARIÁVEIS) A SEREM USADAS NA ANÁLISE
+censo2014_bd <- censo2014_2 [, c('Provincia',
+                                 'F01A-Tipo de iluminação',
+                                 'F02A-Fonte de energia',
+                                 'F03A-Deposita os resíduos sólidos',
+                                 'F04-Tipo de sanitário',
+                                 'F05A-Fonte de água de beber',
+                                 'F06A-Tratamento de água de beber',
+                                 'H1A-Tipo de Habitação')]
+
+View(censo2014_bd)
+colnames(censo2014_bd)
+
+
+#TRATAMENTO DE VALORES AUSENTES
+#TABELA DE DISTRIBUIÇÃO DE FREQEUÊNCIA MOSTRANDO OS VALORES AUSENTES
+table(censo2014_bd$'F01A-Tipo de iluminação',useNA ="always")
+table(censo2014_bd$'F04-Tipo de sanitário',useNA ="always")
+
+
+#CONTAR QUANTIDADE DE VALORES NULOS EM CADA COLUNA (VARIÁVEL)
+contagem_na <- sapply(censo2014_bd, function(x) sum(is.na(x)))
+print(contagem_na)
+
+
+
+#REMOVENDO TODAS AS LINHAS QUE CONTENHAM DADOS EM FALTA
+library(tidyverse)
+censo2014_bd_1 <- na.omit(censo2014_bd)
+
+
+#CONTAR QUANTIDADE DE VALORES NULOS EM CADA COLUNA
+contagem_na <- sapply(censo2014_bd_1, function(x) sum(is.na(x)))
+print(contagem_na)
+
+
+
+# VER OS VALORES ÚNICOS EM COLUNA ESPECIFICA (VER CATEGORIAS DAS VARIAVEIS)
+unique(censo2014_bd_1$`Provincia`)
+table(censo2014_bd_1$`F05A-Fonte de água de beber`,useNA ="always")
+
+
+
+#MOSTRAR AS CATEGORIAS DA VARIAVEL
+levels(censo2014_bd_1$`F04-Tipo de sanitário`)
+
+#RECODIFICANDO VARIÁVEIS
+#RECODIFICANDO "F04-Tipo de sanitário" EM NOVA VARIAVEL
+# 1 - CRIANDO NOVA VARIÁVEL - A VARIAVEL A MODIFICAR E A MODIFICADA DEVEM SER DO MESMO TIPO NESTE CASO FACTOR
+tipo_de_saneamento <- factor(NA, levels = c("Adequado", "Inadequado", "Sem Saneamento"))
+
+
+
+#VERIFICANDO O TIPO DE VARIVEL SE É CARÁTER OU nº inteiro. OBS - Devem ser do mesmo tipo
+typeof(censo2014_bd_1$`F04-Tipo de sanitário`)
+typeof(censo2014_bd_1$'tipo_de_saneamento')
+
+#CONVERTENDO UMA VARIÁVEL EM VARIAVEL EM NOMINAL
+#Normalmente no SPSS as variáveis são preferivelmente codificadas como núméricas
+censo2014_bd_1$'F04-Tipo de sanitário' <- as.character(censo2014_bd_1$'F04-Tipo de sanitário')
+
+
+#2 - RECODIFICANDO AS CATEGORIAS
+#função ifelse no R requer três argumentos: 
+#Condição: Uma expressão lógica que determina qual valor será retornado.
+#Valor para TRUE: O valor a ser retornado se a condição for verdadeira.
+#Valor para FALSE: O valor a ser retornado se a condição for falsa.
+censo2014_bd_1$tipo_de_saneamento <- ifelse(
+  censo2014_bd_1$`F04-Tipo de sanitário` %in% c(
+    "Sanita Ligada à Rede Pública de Esgotos",
+    "Sanita Ligada à Fossa Séptica",
+    "Sanita ligada à fossa aberta(vala ou Rio)",
+    "Retrete/Latrina Ligada à Rede Pública de Egostos",
+    "Retrete/Latrina Ligada à fossa Sèptica"
+  ),
+  "Adequado",
+  ifelse(
+    censo2014_bd_1$`F04-Tipo de sanitário` %in% c("Retrete/Latrina ligada à fossa aberta(Vala ou Rio)"),
+    "Inadequado",
+    "Sem Saneamento"
+  )
+)
+
+
+#MOSTRAR AS CATEGORIAS DA VARIAVEL DISTRIBUIÇÃO DE FREQUÊNCIA
+table(censo2014_bd_1$tipo_de_saneamento)
+
+#VERIFICANDO O TIPO DE VARIVEL SE É CARÁTER OU nº inteiro. OBS - Devem ser do mesmo tipo
+typeof(censo2014_bd_1$`F04-Tipo de sanitário`)
+typeof(censo2014_bd_1$'tipo_de_saneamento')
+
+
+#RECODIFICANDO A VARIAVEL TIPO DE HABITAÇÃO
+#VERIFICANDO AS CATEGORIAS DA VARIAVEL
+levels(censo2014_bd_1$`H1A-Tipo de Habitação`)
+
+#VERIFICANDO O TIPO DE VARIAVEL
+typeof(censo2014_bd_1$`H1A-Tipo de Habitação`)
+
+#CONVERTENDO A VARIAVEL EM TIPO CARACTER
+censo2014_bd_1$`H1A-Tipo de Habitação` <- as.character(censo2014_bd_1$`H1A-Tipo de Habitação`)
+
+#CRIANDO A NOVA VARIAVEL RECODIFICADA COM AS CATEGORIAS
+tipo_habitacao <- as.character(NA, levels = c("Permanente", "Temporária", "Sem Habitação"))
+
+
+#RECODIFICANDO A NOVA VARIVAL
+censo2014_bd_1$tipo_habitacao <- ifelse(
+  censo2014_bd_1$`H1A-Tipo de Habitação` %in% c(
+    "Vivenda", "Casa Convencional", "Apartamento"),
+  "Permanente",
+  ifelse(
+    censo2014_bd_1$`H1A-Tipo de Habitação` %in% c("Barraca", "Tenda", "Roulote", "Contentor"),
+    "Temporária",
+    "Sem Habitação"
+  )
+)
+
+
+#TABELA DE DISTRIBUIÇÃO DE FREQUÊNCIA DA NOVA VARIAVEL RECODIFICADA
+table(censo2014_bd_1$"tipo_habitacao")
+
+
+
+#SALVAR COMO ARQUIVO DO SPSSS .sav COMO .csv
+install.packages("haven")
+library(haven)
+
+
+write.csv(censo2014_bd_1,"censo2014_condicoes_habitacao.csv", row.names = FALSE)
